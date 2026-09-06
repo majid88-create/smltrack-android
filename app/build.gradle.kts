@@ -19,7 +19,24 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"https://ideakaryanusa.softindopp.com/\"")
     }
 
+    // PENTING: debug keystore dipatok ke file tetap (bukan auto-generate).
+    // Tanpa ini, tiap kali GitHub Actions build APK, kuncinya beda-beda
+    // sehingga Android menolak install-timpa versi lama - harus uninstall
+    // dulu tiap update. Dengan ini, update berikutnya bisa install-timpa
+    // langsung tanpa uninstall.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("../keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
