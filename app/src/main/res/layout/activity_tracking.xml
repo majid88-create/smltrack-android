@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Status: tidak aktif"
+        android:textSize="18sp"
+        android:layout_marginTop="24dp" />
+
+    <TextView
+        android:id="@+id/tvLastLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Lokasi terakhir: -"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/tvPendingCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Antrian belum terkirim: 0"
+        android:layout_marginTop="8dp" />
+
+    <Switch
+        android:id="@+id/switchTracking"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Aktifkan pelacakan"
+        android:layout_marginTop="24dp" />
+
+    <TextView
+        android:id="@+id/tvBatteryWarning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="#FFF3E0"
+        android:padding="12dp"
+        android:textColor="#E65100"
+        android:text="⚠ Optimasi baterai belum dimatikan untuk app ini - lokasi bisa berhenti terkirim di background."
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnBatteryOptimization"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Matikan Optimasi Baterai untuk App Ini" />
+
+    <Button
+        android:id="@+id/btnManufacturerSettings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Buka Pengaturan Autostart HP Ini" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#DDDDDD"
+        android:layout_marginTop="24dp" />
+
+    <Button
+        android:id="@+id/btnLaporan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Laporan" />
+
+    <Button
+        android:id="@+id/btnSchedule"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Jadwal" />
+
+    <Button
+        android:id="@+id/btnRecap"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Rekap Absensi" />
+
+    <Button
+        android:id="@+id/btnLogout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Keluar"
+        android:layout_marginTop="32dp" />
+
+</LinearLayout>
