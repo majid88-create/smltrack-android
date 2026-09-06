@@ -50,7 +50,8 @@ class LoginActivity : AppCompatActivity() {
                     session.token = response.body()!!.token
                     goToTracking()
                 } else {
-                    showError("Login gagal (kode ${response.code()}). Cek kembali username/password.")
+                    val detail = try { response.errorBody()?.string() } catch (e: Exception) { null }
+                    showError("Login gagal (kode ${response.code()}):\n${detail ?: "(tidak ada detail dari server)"}")
                 }
             } catch (e: Exception) {
                 showError("Tidak bisa terhubung ke server: ${e.message}")
