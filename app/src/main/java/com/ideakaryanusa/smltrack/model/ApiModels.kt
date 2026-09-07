@@ -3,12 +3,14 @@ package com.ideakaryanusa.smltrack.model
 import com.google.gson.annotations.SerializedName
 
 /**
- * KONFIRMASI dari menangkap request asli (via DevTools browser saat login
- * berhasil di dashboard web): field-nya "Username" dan "Password" (huruf besar
- * di depan), TANPA deviceId. Password yang dikirim adalah hash SHA-256 dari
- * password asli - bukan teks polos. Ini beda total dari tebakan awal
- * (username/password/deviceId huruf kecil semua) yang disusun dari analisa
- * string di APK.
+ * KONFIRMASI dari membaca main.dart.js versi web: backend ini pakai gaya
+ * PascalCase untuk field JSON (contoh: Login pakai "Username"/"Password",
+ * bukan "username"/"password"). Field TraceLog di bawah ini disesuaikan
+ * mengikuti pola yang sama - "Latitude", "Longitude", dst - karena web app
+ * tidak punya fitur kirim GPS sendiri (cuma baca/tampilkan), jadi tidak bisa
+ * dikonfirmasi 100% seperti Login kemarin. Kalau masih gagal, app sekarang
+ * akan menampilkan kode HTTP + pesan error asli di notifikasi, jadi lebih
+ * mudah didiagnosis lagi.
  */
 
 data class LoginRequest(
@@ -29,12 +31,12 @@ data class UserDto(
 )
 
 data class TraceLogRequest(
-    @SerializedName("latitude") val latitude: Double,
-    @SerializedName("longitude") val longitude: Double,
-    @SerializedName("accuracy") val accuracy: Float,
-    @SerializedName("altitude") val altitude: Double,
-    @SerializedName("heading") val heading: Float,
-    @SerializedName("speed") val speed: Float,
-    @SerializedName("timestamp") val timestamp: String,
-    @SerializedName("deviceId") val deviceId: String
+    @SerializedName("Latitude") val latitude: Double,
+    @SerializedName("Longitude") val longitude: Double,
+    @SerializedName("Accuracy") val accuracy: Float,
+    @SerializedName("Altitude") val altitude: Double,
+    @SerializedName("Heading") val heading: Float,
+    @SerializedName("Speed") val speed: Float,
+    @SerializedName("Timestamp") val timestamp: String,
+    @SerializedName("DeviceId") val deviceId: String
 )

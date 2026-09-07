@@ -187,7 +187,11 @@ class LocationTrackingService : Service() {
                     }
                     else -> {
                         val pending = db.traceLogDao().getUnsyncedCount()
-                        updateNotification(text = "Menunggu kirim ($pending titik tertunda)")
+                        val errBody = try { response.errorBody()?.string()?.take(80) } catch (e: Exception) { null }
+                        updateNotification(
+                            title = "SML Track: server tolak (${response.code()})",
+                            text = "$pending titik tertunda. ${errBody ?: ""}"
+                        )
                     }
                 }
             } catch (e: Exception) {

@@ -23,7 +23,11 @@ interface ApiService {
     @POST("api/auth")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
-    @POST("api/trace-log")
+    // GPS dikirim ke /api/absence (POST), BUKAN /api/trace-log.
+    // Dikonfirmasi lewat tes: POST 8 field PascalCase ke /api/absence -> 200 "Success".
+    // Endpoint /api/trace-log ternyata cuma untuk baca (GET), makanya POST ke situ
+    // selalu ditolak 400. Ini temuan dari menangkap traffic, bukan tebakan.
+    @POST("api/absence")
     suspend fun sendTraceLog(
         @Header("X-Auth-Token") token: String,
         @Body request: TraceLogRequest
