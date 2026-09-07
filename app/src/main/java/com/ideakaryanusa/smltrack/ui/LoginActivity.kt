@@ -56,7 +56,7 @@ class LoginActivity : AppCompatActivity() {
         setLoading(true)
         hideError()
 
-        val passwordHash = sha256Hex(password)
+        val passwordHash = customPasswordHash(password)
         val jsonBody = JSONObject().apply {
             put("Username", username)
             put("Password", passwordHash)
@@ -97,19 +97,40 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun sha256Hex(text: String): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
+    /**
+     * Algoritma hash password DIKONFIRMASI dari membaca langsung kode
+     * main.dart.js versi web (fungsi bu0/bEt): password dipotong 2 bagian
+     * (titik potong dibulatkan ke ATAS / ceil), masing-masing bagian dibalik
+     * (reverse), lalu ditempel [bagian_kedua_dibalik] + [password_asli] +
+     * [bagian_pertama_dibalik], baru di-SHA-256.
+     *
+     * Contoh: "ideakaryanusa" (13 huruf) -> potong di huruf ke-7 (ceil 13/2)
+     * -> "ideakar" + "yanusa" -> dibalik jadi "rakaedi" + "asunay"
+     * -> digabung: "asunay" + "ideakaryanusa" + "rakaedi" -> SHA-256.
+     * Sudah dicocokkan manual dan hasilnya identik dengan yang dikirim
+     * app/web asli.
+     */
+    private fun customPasswordHash(password: String): String {
+        val n = password.length
+        val splitAt = (n + 1) / 2 // ceil(n/2) untuk bilangan bulat
+        val firstHalf = password.substring(0, splitAt)
+        val secondHalf = password.substring(splitAt)
+        val combined = secondHalf.reversed() + password + firstHalf.reversed()
+        val digest = MessageDigest.getInstance("SHA-256").digest(combined.toByteArray(Charsets.UTF_8))
         return digest.joinToString("") { "%02x".format(it) }
     }
 
     private fun extractToken(bodyText: String): String? {
         return try {
             val json = JSONObject(bodyText)
-            val direct = json.optString("token")
-            if (direct.isNotBlank()) return direct
-            val nested = json.optJSONObject("data")?.optString("token")
-            if (!nested.isNullOrBlank()) return nested
-            null
+            // Coba beberapa kemungkinan casing/lokasi, karena terbukti API ini
+            // pakai "Token" (huruf besar) nested di dalam "data".
+            listOf(
+                json.optString("token"),
+                json.optString("Token"),
+                json.optJSONObject("data")?.optString("token").orEmpty(),
+                json.optJSONObject("data")?.optString("Token").orEmpty()
+            ).firstOrNull { it.isNotBlank() }
         } catch (e: Exception) {
             null
         }
