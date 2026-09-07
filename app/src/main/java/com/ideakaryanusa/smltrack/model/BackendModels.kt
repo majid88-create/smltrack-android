@@ -62,3 +62,16 @@ data class LatLngDto(
     @SerializedName("lat") val lat: Double,
     @SerializedName("lng") val lng: Double
 )
+
+
+// Riwayat kunjungan terakhir tiap site untuk user yang sedang login.
+data class LastVisitsResponse(
+    @SerializedName("status") val status: String?,
+    @SerializedName("data") val data: List<LastVisitDto>?
+)
+
+data class LastVisitDto(
+    @SerializedName("projectId") val projectId: String?,
+    @SerializedName("projectName") val projectName: String?,
+    @SerializedName("timestamp") val timestamp: String?
+)
