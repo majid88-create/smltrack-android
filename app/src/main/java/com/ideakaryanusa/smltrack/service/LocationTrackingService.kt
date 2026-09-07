@@ -115,6 +115,16 @@ class LocationTrackingService : Service() {
         val wl = acquireWakeLock()
         try {
             session.lastHeartbeatMillis = System.currentTimeMillis()
+
+            // Tolak titik dari fake GPS / mock location
+            if (com.ideakaryanusa.smltrack.util.FakeGpsDetector.isMockLocation(location)) {
+                updateNotification(
+                    title = "SML Track: lokasi palsu terdeteksi",
+                    text = "Titik dari fake GPS diabaikan. Matikan aplikasi lokasi palsu."
+                )
+                return
+            }
+
             session.setLastLocation(location.latitude, location.longitude, timeLabelNow())
 
             // --- Anti-duplikat DINONAKTIFKAN SEMENTARA (atas permintaan, untuk analisa) ---

@@ -122,15 +122,27 @@
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- Maps kecil -->
-            <ImageView
-                android:id="@+id/ivMap"
+            <!-- Maps (WebView + Leaflet, gratis tanpa API key) -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="140dp"
+                android:layout_height="160dp"
                 android:layout_marginTop="14dp"
-                android:background="@color/bg"
-                android:scaleType="centerCrop"
-                android:src="@android:drawable/ic_dialog_map" />
+                android:background="@color/bg">
+
+                <WebView
+                    android:id="@+id/mapWebView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <TextView
+                    android:id="@+id/tvMapPlaceholder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="Peta akan muncul saat lokasi tersedia"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/tvLocation"
@@ -150,7 +162,7 @@
                 android:background="@drawable/btn_green"
                 android:gravity="center"
                 android:paddingVertical="15dp"
-                android:text="▶ AKTIFKAN PELACAKAN"
+                android:text="▶ MULAI MERGAWE"
                 android:textColor="@color/white"
                 android:textSize="15sp"
                 android:textStyle="bold" />

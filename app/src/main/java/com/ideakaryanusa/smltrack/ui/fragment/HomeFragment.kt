@@ -1,6 +1,7 @@
 package com.ideakaryanusa.smltrack.ui.fragment
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -8,6 +9,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -19,7 +21,6 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import coil.load
 import com.ideakaryanusa.smltrack.BuildConfig
 import com.ideakaryanusa.smltrack.R
 import com.ideakaryanusa.smltrack.databinding.FragmentHomeBinding
@@ -30,6 +31,7 @@ import com.ideakaryanusa.smltrack.sync.PeriodicLocationWorker
 import com.ideakaryanusa.smltrack.sync.TraceLogSyncWorker
 import com.ideakaryanusa.smltrack.ui.LoginActivity
 import com.ideakaryanusa.smltrack.ui.adapter.SiteAdapter
+import com.ideakaryanusa.smltrack.util.FakeGpsDetector
 import com.ideakaryanusa.smltrack.util.ManufacturerSettingsHelper
 import com.ideakaryanusa.smltrack.util.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -110,7 +112,7 @@ class HomeFragment : Fragment() {
                 if (data.lastLat != null && data.lastLng != null) {
                     binding.tvLocation.text = "📍 ${data.lastArea ?: "Lokasi"}: ${data.lastLat}, ${data.lastLng}" +
                         (data.lastTime?.let { " (jam $it)" } ?: "")
-                    loadStaticMap(data.lastLat, data.lastLng)
+                    showMap(data.lastLat, data.lastLng)
                 }
 
                 // Aktivitas hari ini (site dikunjungi)
@@ -143,14 +145,43 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /** Maps statik gratis dari OpenStreetMap (staticmap) - tanpa API key. */
-    private fun loadStaticMap(lat: Double, lng: Double) {
-        val url = "https://staticmap.openstreetmap.de/staticmap.php" +
-            "?center=$lat,$lng&zoom=16&size=600x280&markers=$lat,$lng,red-pushpin"
-        binding.ivMap.load(url)
+    /** Peta interaktif Leaflet + OpenStreetMap di WebView - gratis, tanpa API key. */
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun showMap(lat: Double, lng: Double) {
+        binding.tvMapPlaceholder.visibility = View.GONE
+        val web = binding.mapWebView
+        web.settings.javaScriptEnabled = true
+        web.settings.domStorageEnabled = true
+        val html = """
+            <!DOCTYPE html><html><head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
+            </head><body><div id="map"></div>
+            <script>
+              var map = L.map('map', {zoomControl:false, attributionControl:false}).setView([$lat,$lng], 16);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+              L.marker([$lat,$lng]).addTo(map);
+            </script></body></html>
+        """.trimIndent()
+        web.loadDataWithBaseURL("https://www.openstreetmap.org", html, "text/html", "UTF-8", null)
     }
 
     private fun requestAndStart() {
+        // Cek fake GPS dulu - kalau ada, tolak dan beri tahu user
+        val fakeApp = FakeGpsDetector.findFakeGpsApp(requireContext())
+        if (fakeApp != null) {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Aplikasi Lokasi Palsu Terdeteksi")
+                .setMessage("Terdeteksi aplikasi \"$fakeApp\" yang bisa memalsukan lokasi.\n\n" +
+                    "Mergawe tidak bisa diaktifkan selama aplikasi ini terpasang. " +
+                    "Silakan hapus/nonaktifkan dulu aplikasi tersebut.")
+                .setPositiveButton("Mengerti", null)
+                .show()
+            return
+        }
+
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
@@ -183,15 +214,15 @@ class HomeFragment : Fragment() {
         if (active) {
             binding.tvStatus.text = "Status: Aktif"
             binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.green))
-            binding.tvStatusSub.text = "Sedang dalam pelacakan"
+            binding.tvStatusSub.text = "Sedang Mergawe"
             binding.tvOnline.visibility = View.VISIBLE
-            binding.btnToggleTracking.text = "■ MATIKAN PELACAKAN"
+            binding.btnToggleTracking.text = "■ BERHENTI MERGAWE"
         } else {
             binding.tvStatus.text = "Status: Tidak Aktif"
             binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
-            binding.tvStatusSub.text = "Pelacakan belum aktif"
+            binding.tvStatusSub.text = "Belum Mergawe"
             binding.tvOnline.visibility = View.GONE
-            binding.btnToggleTracking.text = "▶ AKTIFKAN PELACAKAN"
+            binding.btnToggleTracking.text = "▶ MULAI MERGAWE"
         }
     }
 
