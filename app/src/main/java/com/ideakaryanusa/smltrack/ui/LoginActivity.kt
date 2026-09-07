@@ -15,17 +15,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
- * CATATAN DIAGNOSA (sementara):
- * Akun terbukti VALID di app SML asli, tapi ditolak (401) lewat model
- * request yang saya susun dari tebakan string di binary. Daripada build
- * ulang berkali-kali untuk ganti satu nama field, di sini SEKALIGUS dicoba
- * beberapa kemungkinan bentuk body yang paling masuk akal, lalu semua
- * hasilnya ditampilkan - supaya sekali test langsung ketahuan yang mana
- * yang benar. Begitu ketemu formatnya, bagian ini akan disederhanakan lagi
- * jadi satu request saja.
+ * Format request dikonfirmasi dari menangkap traffic asli (DevTools browser
+ * saat login berhasil di dashboard web ideakaryanusa.softindopp.com):
+ * - Field: "Username" dan "Password" (huruf besar di depan)
+ * - Password yang dikirim adalah HASH SHA-256 dari password asli, bukan teks polos
+ * - Tidak ada deviceId di request login
  */
 class LoginActivity : AppCompatActivity() {
 
@@ -57,62 +55,51 @@ class LoginActivity : AppCompatActivity() {
 
         setLoading(true)
         hideError()
-        val deviceId = session.getOrCreateDeviceId(this)
 
-        val variants = listOf(
-            "V1 username+password+deviceId" to JSONObject().apply {
-                put("username", username); put("password", password); put("deviceId", deviceId)
-            },
-            "V2 email+password+deviceId" to JSONObject().apply {
-                put("email", username); put("password", password); put("deviceId", deviceId)
-            },
-            "V3 username+password (tanpa deviceId)" to JSONObject().apply {
-                put("username", username); put("password", password)
-            }
-        )
+        val passwordHash = sha256Hex(password)
+        val jsonBody = JSONObject().apply {
+            put("Username", username)
+            put("Password", passwordHash)
+        }
 
         lifecycleScope.launch {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .build()
+            try {
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(15, TimeUnit.SECONDS)
+                    .readTimeout(15, TimeUnit.SECONDS)
+                    .build()
 
-            val log = StringBuilder()
-            var success = false
+                val request = Request.Builder()
+                    .url(BuildConfig.API_BASE_URL + "api/auth")
+                    .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
 
-            for ((label, jsonBody) in variants) {
-                if (success) break
-                try {
-                    val request = Request.Builder()
-                        .url(BuildConfig.API_BASE_URL + "api/auth")
-                        .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
-                        .build()
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val bodyText = withContext(Dispatchers.IO) { response.body?.string() }.orEmpty()
+                response.close()
 
-                    val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
-                    val bodyText = withContext(Dispatchers.IO) { response.body?.string() }.orEmpty()
-
-                    log.append("$label\n-> HTTP ${response.code}: ${bodyText.take(200)}\n\n")
-
-                    if (response.isSuccessful) {
-                        val token = extractToken(bodyText)
-                        if (token != null) {
-                            session.token = token
-                            success = true
-                        }
+                if (response.isSuccessful) {
+                    val token = extractToken(bodyText)
+                    if (token != null) {
+                        session.token = token
+                        goToTracking()
+                    } else {
+                        showError("Login sukses (${response.code}) tapi token tidak ditemukan di response:\n\n$bodyText")
                     }
-                    response.close()
-                } catch (e: Exception) {
-                    log.append("$label\n-> error: ${e.message}\n\n")
+                } else {
+                    showError("Login gagal (kode ${response.code}):\n\n${bodyText.take(300)}")
                 }
-            }
-
-            setLoading(false)
-            if (success) {
-                goToTracking()
-            } else {
-                showError("Semua percobaan gagal:\n\n$log")
+            } catch (e: Exception) {
+                showError("Tidak bisa terhubung ke server: ${e.message}")
+            } finally {
+                setLoading(false)
             }
         }
+    }
+
+    private fun sha256Hex(text: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
     private fun extractToken(bodyText: String): String? {
