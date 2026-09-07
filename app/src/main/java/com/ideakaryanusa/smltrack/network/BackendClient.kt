@@ -37,6 +37,45 @@ interface BackendApiService {
         @Query("action") action: String = "geofence",
         @Query("secret") secret: String
     ): Response<GeofenceResponse>
+
+    @GET("exec")
+    suspend fun getHome(
+        @Query("action") action: String = "home",
+        @Query("secret") secret: String,
+        @Query("username") username: String
+    ): Response<com.ideakaryanusa.smltrack.model.HomeResponse>
+
+    @GET("exec")
+    suspend fun getRecap(
+        @Query("action") action: String = "recap",
+        @Query("secret") secret: String,
+        @Query("month") month: Int,
+        @Query("year") year: Int
+    ): Response<com.ideakaryanusa.smltrack.model.RecapResponse>
+
+    @GET("exec")
+    suspend fun getLaporanList(
+        @Query("action") action: String = "laporan_list",
+        @Query("secret") secret: String,
+        @Query("username") username: String
+    ): Response<com.ideakaryanusa.smltrack.model.LaporanListResponse2>
+
+    @GET("exec")
+    suspend fun getJadwal(
+        @Query("action") action: String = "jadwal",
+        @Query("secret") secret: String,
+        @Query("username") username: String
+    ): Response<com.ideakaryanusa.smltrack.model.JadwalResponse>
+
+    @POST("exec")
+    suspend fun checkInOut(
+        @Body request: com.ideakaryanusa.smltrack.model.CheckInOutRequest
+    ): Response<BackendResponse>
+
+    @POST("exec")
+    suspend fun createLaporan(
+        @Body request: com.ideakaryanusa.smltrack.model.LaporanCreateRequest
+    ): Response<BackendResponse>
 }
 
 object BackendClient {

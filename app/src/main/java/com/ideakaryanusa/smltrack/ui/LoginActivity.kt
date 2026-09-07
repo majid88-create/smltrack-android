@@ -138,7 +138,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun goToTracking() {
-        startActivity(Intent(this, TrackingActivity::class.java))
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 

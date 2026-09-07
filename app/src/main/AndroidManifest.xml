@@ -31,7 +31,7 @@
         </activity>
 
         <activity
-            android:name=".ui.TrackingActivity"
+            android:name=".ui.MainActivity"
             android:exported="false" />
 
         <activity android:name=".ui.LaporanListActivity" android:exported="false" />

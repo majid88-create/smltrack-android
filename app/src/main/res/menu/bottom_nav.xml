@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_home" android:title="Home" android:icon="@android:drawable/ic_menu_compass" />
+    <item android:id="@+id/nav_laporan" android:title="Laporan" android:icon="@android:drawable/ic_menu_edit" />
+    <item android:id="@+id/nav_jadwal" android:title="Jadwal" android:icon="@android:drawable/ic_menu_my_calendar" />
+    <item android:id="@+id/nav_rekap" android:title="Rekap Absensi" android:icon="@android:drawable/ic_menu_sort_by_size" />
+</menu>
