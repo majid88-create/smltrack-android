@@ -3,76 +3,71 @@ package com.ideakaryanusa.smltrack.sync
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.ideakaryanusa.smltrack.BuildConfig
 import com.ideakaryanusa.smltrack.data.AppDatabase
-import com.ideakaryanusa.smltrack.model.TraceLogRequest
-import com.ideakaryanusa.smltrack.network.RetrofitClient
+import com.ideakaryanusa.smltrack.model.BackendTraceBatchRequest
+import com.ideakaryanusa.smltrack.model.BackendTracePoint
+import com.ideakaryanusa.smltrack.network.BackendClient
 import com.ideakaryanusa.smltrack.util.SessionManager
 
 /**
- * Kirim ulang semua trace log yang masih synced=false. Dipanggil dari 2 arah:
+ * Kirim ulang semua trace log yang masih synced=false ke backend SENDIRI
+ * (Apps Script). Dipanggil dari 2 arah:
  * 1. Jadwal periodik WorkManager (tiap 15 menit, dengan constraint ada internet)
- * 2. Sekali-tembak dari LocationTrackingService begitu ConnectivityManager
- *    melaporkan koneksi baru tersedia - supaya data tidak nunggu lama nganggur
- *    di antrian begitu HP keluar dari area tanpa sinyal.
+ * 2. Sekali-tembak dari LocationTrackingService begitu koneksi baru tersedia.
  *
- * MENGURAS SELURUH antrian dalam satu jalan (bukan cuma satu batch 50 item) -
- * penting kalau HP offline berjam-jam dan antrian menumpuk banyak.
+ * Pakai endpoint BATCH: semua titik tertunda dikirim dalam SATU request
+ * (bukan satu request per titik) - jauh lebih hemat kuota Apps Script yang
+ * dibatasi ~20.000 request/hari. Penting kalau HP habis offline berjam-jam.
  */
 class TraceLogSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         val session = SessionManager(applicationContext)
-        val token = session.token ?: return Result.success() // belum login, tidak ada yang perlu disinkronkan
+        val username = session.username ?: return Result.success() // belum login
+        val deviceId = session.getOrCreateDeviceId(applicationContext)
 
         val db = AppDatabase.getInstance(applicationContext)
-
-        var anyFailure = false
 
         while (true) {
             val batch = db.traceLogDao().getUnsynced()
             if (batch.isEmpty()) break
 
-            var batchHadSuccess = false
-
-            for (log in batch) {
-                try {
-                    val response = RetrofitClient.api.sendTraceLog(
-                        token = token,
-                        request = TraceLogRequest(
-                            latitude = log.latitude,
-                            longitude = log.longitude,
-                            accuracy = log.accuracy,
-                            altitude = log.altitude,
-                            heading = log.heading,
-                            speed = log.speed,
-                            timestamp = log.timestamp,
-                            deviceId = log.deviceId
-                        )
-                    )
-                    if (response.isSuccessful) {
-                        db.traceLogDao().update(log.copy(synced = true))
-                        batchHadSuccess = true
-                    } else if (response.code() == 401 || response.code() == 403) {
-                        // Token kedaluwarsa. Percuma retry - server akan terus menolak
-                        // sampai user login ulang. Data TETAP tersimpan (synced=false),
-                        // jadi begitu login ulang semuanya akan terkirim, tidak hilang.
-                        return Result.success()
-                    } else {
-                        anyFailure = true
-                    }
-                } catch (e: Exception) {
-                    anyFailure = true
-                }
+            val points = batch.map { log ->
+                BackendTracePoint(
+                    latitude = log.latitude,
+                    longitude = log.longitude,
+                    accuracy = log.accuracy,
+                    speed = log.speed,
+                    timestamp = log.timestamp,
+                    projectId = log.projectId,
+                    projectName = log.projectName
+                )
             }
 
-            db.traceLogDao().clearSynced()
-
-            // Kalau satu batch penuh gagal semua (misal internet putus lagi di
-            // tengah jalan), berhenti - jangan diulang tanpa henti, biarkan
-            // WorkManager yang menjadwalkan retry dengan backoff.
-            if (!batchHadSuccess) break
+            try {
+                val response = BackendClient.api.sendTraceBatch(
+                    BackendTraceBatchRequest(
+                        secret = BuildConfig.APP_SECRET,
+                        username = username,
+                        deviceId = deviceId,
+                        points = points
+                    )
+                )
+                if (response.isSuccessful && response.body()?.status == "ok") {
+                    // Tandai semua titik di batch ini sebagai terkirim
+                    batch.forEach { db.traceLogDao().update(it.copy(synced = true)) }
+                    db.traceLogDao().clearSynced()
+                } else {
+                    // Backend menolak - berhenti, biarkan WorkManager retry nanti
+                    return Result.retry()
+                }
+            } catch (e: Exception) {
+                // Tidak ada koneksi - retry nanti
+                return Result.retry()
+            }
         }
 
-        return if (anyFailure) Result.retry() else Result.success()
+        return Result.success()
     }
 }

@@ -82,6 +82,7 @@ class LoginActivity : AppCompatActivity() {
                     val token = extractToken(bodyText)
                     if (token != null) {
                         session.token = token
+                        session.username = username   // simpan untuk dipakai service
                         goToTracking()
                     } else {
                         showError("Login sukses (${response.code}) tapi token tidak ditemukan di response:\n\n$bodyText")

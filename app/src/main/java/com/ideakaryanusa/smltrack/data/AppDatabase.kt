@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [TraceLogEntity::class], version = 1, exportSchema = false)
+@Database(entities = [TraceLogEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun traceLogDao(): TraceLogDao
@@ -19,7 +19,11 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "smltrack.db"
-                ).build().also { INSTANCE = it }
+                )
+                    // Fase pengembangan: kalau skema berubah, hapus data lama saja
+                    // (data GPS lokal cuma antrian sementara, aman dibuang).
+                    .fallbackToDestructiveMigration()
+                    .build().also { INSTANCE = it }
             }
         }
     }

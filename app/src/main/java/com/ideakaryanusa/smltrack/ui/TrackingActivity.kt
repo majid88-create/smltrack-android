@@ -14,21 +14,29 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.ideakaryanusa.smltrack.BuildConfig
 import com.ideakaryanusa.smltrack.data.AppDatabase
 import com.ideakaryanusa.smltrack.databinding.ActivityTrackingBinding
+import com.ideakaryanusa.smltrack.network.BackendClient
 import com.ideakaryanusa.smltrack.service.LocationTrackingService
 import com.ideakaryanusa.smltrack.service.WatchdogReceiver
 import com.ideakaryanusa.smltrack.sync.PeriodicLocationWorker
 import com.ideakaryanusa.smltrack.sync.TraceLogSyncWorker
+import com.ideakaryanusa.smltrack.util.GeofenceArea
+import com.ideakaryanusa.smltrack.util.GeofenceManager
+import com.ideakaryanusa.smltrack.util.LatLng
 import com.ideakaryanusa.smltrack.util.ManufacturerSettingsHelper
 import com.ideakaryanusa.smltrack.util.SessionManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 class TrackingActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityTrackingBinding
     private lateinit var session: SessionManager
+    private lateinit var geofence: GeofenceManager
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -47,10 +55,12 @@ class TrackingActivity : AppCompatActivity() {
         binding = ActivityTrackingBinding.inflate(layoutInflater)
         setContentView(binding.root)
         session = SessionManager(this)
+        geofence = GeofenceManager(this)
 
         schedulePeriodicSync()
         schedulePeriodicLocationBackup()
         refreshPendingCount()
+        refreshGeofenceFromBackend()
 
         // Kalau tracking sudah aktif dari sesi sebelumnya (misal Activity dibuka
         // ulang setelah app di-kill sistem lalu di-restart Watchdog), cerminkan
@@ -166,6 +176,31 @@ class TrackingActivity : AppCompatActivity() {
             ExistingPeriodicWorkPolicy.KEEP,
             request
         )
+    }
+
+    private fun refreshGeofenceFromBackend() {
+        lifecycleScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    BackendClient.api.getGeofence(secret = BuildConfig.APP_SECRET)
+                }
+                val data = response.body()?.data
+                if (response.isSuccessful && data != null) {
+                    val areas = data.mapNotNull { dto ->
+                        val id = dto.projectId ?: return@mapNotNull null
+                        val poly = dto.polygon?.map { LatLng(it.lat, it.lng) } ?: emptyList()
+                        if (poly.size < 3) return@mapNotNull null
+                        GeofenceArea(id, dto.projectName ?: "", poly)
+                    }
+                    if (areas.isNotEmpty()) {
+                        geofence.saveAreas(areas)
+                    }
+                }
+            } catch (e: Exception) {
+                // Gagal ambil geofence (misal offline) - pakai cache lama yang
+                // sudah tersimpan sebelumnya. Tidak fatal.
+            }
+        }
     }
 
     private fun refreshPendingCount() {

@@ -17,6 +17,14 @@ android {
 
         // Ganti ini kalau alamat backend berbeda per environment.
         buildConfigField("String", "API_BASE_URL", "\"https://ideakaryanusa.softindopp.com/\"")
+
+        // Backend SENDIRI (Apps Script Web App). Isi dengan URL Web App hasil
+        // deploy, DIAKHIRI dengan "/" (contoh: ".../macros/s/AKfy..../").
+        // Saat pindah ke VPS nanti, cukup ganti URL ini.
+        buildConfigField("String", "https://script.google.com/macros/s/AKfycbxDFvOiVDvFJNazyuDR1RUvZzhXHHA-aBY__3wbsAZAdYfiDwCB0JM8eXmJQQ3CulqmzA/exec", "\"https://script.google.com/macros/s/GANTI_DENGAN_ID_DEPLOY/\"")
+
+        // Kunci rahasia yang HARUS sama dengan SECRET_APP di Apps Script.
+        buildConfigField("String", "Marsya", "\"GANTI_DENGAN_KUNCI_RAHASIA\"")
     }
 
     // PENTING: debug keystore dipatok ke file tetap (bukan auto-generate).
@@ -69,6 +77,7 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
 
     // Local offline queue
     implementation("androidx.room:room-runtime:2.6.1")

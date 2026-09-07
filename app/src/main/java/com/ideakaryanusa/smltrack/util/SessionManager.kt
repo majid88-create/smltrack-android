@@ -24,6 +24,12 @@ class SessionManager(context: Context) {
         get() = prefs.getString(KEY_TOKEN, null)
         set(value) = prefs.edit().putString(KEY_TOKEN, value).apply()
 
+    // Username disimpan saat login, dipakai service untuk menandai data GPS
+    // milik siapa saat dikirim ke backend sendiri.
+    var username: String?
+        get() = prefs.getString(KEY_USERNAME, null)
+        set(value) = prefs.edit().putString(KEY_USERNAME, value).apply()
+
     fun clearToken() {
         prefs.edit().remove(KEY_TOKEN).apply()
     }
@@ -77,6 +83,7 @@ class SessionManager(context: Context) {
 
     companion object {
         private const val KEY_TOKEN = "auth_token"
+        private const val KEY_USERNAME = "username"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_TRACKING_ENABLED = "tracking_enabled"
         private const val KEY_HEARTBEAT = "last_heartbeat"

@@ -14,5 +14,9 @@ data class TraceLogEntity(
     val speed: Float,
     val timestamp: String,
     val deviceId: String,
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    // Hasil deteksi geofence di HP: area terdaftar tempat titik ini berada.
+    // null/kosong kalau titik di luar semua area (di jalan, dsb).
+    val projectId: String? = null,
+    val projectName: String? = null
 )

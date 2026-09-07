@@ -21,13 +21,15 @@ import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.ideakaryanusa.smltrack.BuildConfig
 import com.ideakaryanusa.smltrack.R
 import com.ideakaryanusa.smltrack.data.AppDatabase
 import com.ideakaryanusa.smltrack.data.TraceLogEntity
-import com.ideakaryanusa.smltrack.model.TraceLogRequest
-import com.ideakaryanusa.smltrack.network.RetrofitClient
+import com.ideakaryanusa.smltrack.model.BackendTraceRequest
+import com.ideakaryanusa.smltrack.network.BackendClient
 import com.ideakaryanusa.smltrack.sync.TraceLogSyncWorker
 import com.ideakaryanusa.smltrack.ui.LoginActivity
+import com.ideakaryanusa.smltrack.util.GeofenceManager
 import com.ideakaryanusa.smltrack.util.LocationEngine
 import com.ideakaryanusa.smltrack.util.SessionManager
 import kotlinx.coroutines.CoroutineScope
@@ -61,19 +63,20 @@ class LocationTrackingService : Service() {
     private lateinit var engine: LocationEngine
     private lateinit var db: AppDatabase
     private lateinit var session: SessionManager
+    private lateinit var geofence: GeofenceManager
     private val scope = CoroutineScope(Dispatchers.IO)
 
     private lateinit var connectivityManager: ConnectivityManager
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     @Volatile private var lastSentLabel: String = "belum ada"
-    @Volatile private var authExpired: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
         engine = LocationEngine(this)
         db = AppDatabase.getInstance(this)
         session = SessionManager(this)
+        geofence = GeofenceManager(this)
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         createNotificationChannel()
         registerNetworkCallback()
@@ -130,6 +133,9 @@ class LocationTrackingService : Service() {
                 db.traceLogDao().deleteOldest(total - MAX_QUEUE_SIZE + PRUNE_BATCH)
             }
 
+            // --- Deteksi geofence: titik ini ada di dalam area terdaftar mana?
+            val area = geofence.findContainingArea(location.latitude, location.longitude)
+
             val deviceId = session.getOrCreateDeviceId(this)
             val entity = TraceLogEntity(
                 latitude = location.latitude,
@@ -140,63 +146,47 @@ class LocationTrackingService : Service() {
                 speed = location.speed,
                 timestamp = isoNow(),
                 deviceId = deviceId,
-                synced = false
+                synced = false,
+                projectId = area?.projectId,
+                projectName = area?.projectName
             )
             val rowId = db.traceLogDao().insert(entity)
 
-            val token = session.token
-            if (token == null) {
+            val username = session.username
+            if (username == null) {
                 updateNotification(text = "Belum login - data disimpan lokal")
                 return
             }
 
-            // Kalau token sudah ditolak server sebelumnya, jangan spam request terus.
-            if (authExpired) {
-                updateNotification(
-                    title = "SML Track: perlu login ulang",
-                    text = "Sesi berakhir. Buka app dan login lagi."
-                )
-                return
-            }
-
+            // Kirim ke backend SENDIRI (Apps Script), bukan server SML asli.
             try {
-                val response = RetrofitClient.api.sendTraceLog(
-                    token = token,
-                    request = TraceLogRequest(
+                val response = BackendClient.api.sendTrace(
+                    BackendTraceRequest(
+                        secret = BuildConfig.APP_SECRET,
+                        username = username,
+                        deviceId = deviceId,
                         latitude = entity.latitude,
                         longitude = entity.longitude,
                         accuracy = entity.accuracy,
-                        altitude = entity.altitude,
-                        heading = entity.heading,
                         speed = entity.speed,
                         timestamp = entity.timestamp,
-                        deviceId = entity.deviceId
+                        projectId = entity.projectId,
+                        projectName = entity.projectName
                     )
                 )
 
-                when {
-                    response.isSuccessful -> {
-                        db.traceLogDao().update(entity.copy(id = rowId, synced = true))
-                        lastSentLabel = timeLabelNow()
-                        updateNotification(text = "Terakhir terkirim: $lastSentLabel")
-                    }
-                    response.code() == 401 || response.code() == 403 -> {
-                        // Token kedaluwarsa/dicabut. Data tetap tersimpan lokal dan akan
-                        // terkirim setelah user login ulang - tidak ada yang hilang.
-                        authExpired = true
-                        updateNotification(
-                            title = "SML Track: perlu login ulang",
-                            text = "Sesi berakhir. Data tetap tersimpan, buka app untuk login."
-                        )
-                    }
-                    else -> {
-                        val pending = db.traceLogDao().getUnsyncedCount()
-                        val errBody = try { response.errorBody()?.string()?.take(80) } catch (e: Exception) { null }
-                        updateNotification(
-                            title = "SML Track: server tolak (${response.code()})",
-                            text = "$pending titik tertunda. ${errBody ?: ""}"
-                        )
-                    }
+                if (response.isSuccessful && response.body()?.status == "ok") {
+                    db.traceLogDao().update(entity.copy(id = rowId, synced = true))
+                    lastSentLabel = timeLabelNow()
+                    val areaLabel = area?.projectName?.let { " di $it" } ?: " (di luar area)"
+                    updateNotification(text = "Terkirim: $lastSentLabel$areaLabel")
+                } else {
+                    val pending = db.traceLogDao().getUnsyncedCount()
+                    val msg = response.body()?.message ?: "kode ${response.code()}"
+                    updateNotification(
+                        title = "SML Track: backend tolak",
+                        text = "$pending titik tertunda. $msg"
+                    )
                 }
             } catch (e: Exception) {
                 val pending = db.traceLogDao().getUnsyncedCount()
