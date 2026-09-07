@@ -113,12 +113,15 @@ class LocationTrackingService : Service() {
         try {
             session.lastHeartbeatMillis = System.currentTimeMillis()
 
-            // --- Anti-duplikat: HP diam di satu tempat tidak perlu ratusan baris identik.
-            val latest = db.traceLogDao().getLatest()
-            if (latest != null && isSameSpot(latest, location)) {
-                updateNotification(text = "Diam di lokasi yang sama - terakhir kirim: $lastSentLabel")
-                return
-            }
+            // --- Anti-duplikat DINONAKTIFKAN SEMENTARA (atas permintaan, untuk analisa) ---
+            // Kode aslinya masih ada di bawah, tinggal un-comment kalau nanti mau
+            // diaktifkan lagi setelah analisa selesai (menghemat kuota/baterai).
+            //
+            // val latest = db.traceLogDao().getLatest()
+            // if (latest != null && isSameSpot(latest, location)) {
+            //     updateNotification(text = "Diam di lokasi yang sama - terakhir kirim: $lastSentLabel")
+            //     return
+            // }
 
             // --- Batas antrian: jaga penyimpanan HP kalau offline berhari-hari.
             val total = db.traceLogDao().getTotalCount()
