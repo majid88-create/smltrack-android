@@ -112,6 +112,7 @@ class LocationTrackingService : Service() {
         val wl = acquireWakeLock()
         try {
             session.lastHeartbeatMillis = System.currentTimeMillis()
+            session.setLastLocation(location.latitude, location.longitude, timeLabelNow())
 
             // --- Anti-duplikat DINONAKTIFKAN SEMENTARA (atas permintaan, untuk analisa) ---
             // Kode aslinya masih ada di bawah, tinggal un-comment kalau nanti mau

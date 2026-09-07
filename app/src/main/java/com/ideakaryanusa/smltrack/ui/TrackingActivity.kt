@@ -86,6 +86,12 @@ class TrackingActivity : AppCompatActivity() {
         super.onResume()
         refreshPendingCount()
         refreshBatteryWarning()
+        refreshLastLocation()
+    }
+
+    private fun refreshLastLocation() {
+        val label = session.getLastLocationLabel()
+        binding.tvLastLocation.text = "Lokasi terakhir: ${label ?: "-"}"
     }
 
     private fun refreshBatteryWarning() {

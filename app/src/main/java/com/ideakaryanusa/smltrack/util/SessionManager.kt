@@ -57,10 +57,31 @@ class SessionManager(context: Context) {
         get() = prefs.getLong(KEY_HEARTBEAT, 0L)
         set(value) = prefs.edit().putLong(KEY_HEARTBEAT, value).apply()
 
+    // Lokasi terakhir yang berhasil diambil - dibaca TrackingActivity untuk
+    // ditampilkan di layar utama ("Lokasi terakhir: ..."). Sebelumnya nilai
+    // ini tidak pernah ditulis sama sekali, makanya selalu tampil "-".
+    fun setLastLocation(lat: Double, lng: Double, timeLabel: String) {
+        prefs.edit()
+            .putString(KEY_LAST_LAT, lat.toString())
+            .putString(KEY_LAST_LNG, lng.toString())
+            .putString(KEY_LAST_LOCATION_TIME, timeLabel)
+            .apply()
+    }
+
+    fun getLastLocationLabel(): String? {
+        val lat = prefs.getString(KEY_LAST_LAT, null) ?: return null
+        val lng = prefs.getString(KEY_LAST_LNG, null) ?: return null
+        val time = prefs.getString(KEY_LAST_LOCATION_TIME, null) ?: return null
+        return "$lat, $lng (jam $time)"
+    }
+
     companion object {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_TRACKING_ENABLED = "tracking_enabled"
         private const val KEY_HEARTBEAT = "last_heartbeat"
+        private const val KEY_LAST_LAT = "last_lat"
+        private const val KEY_LAST_LNG = "last_lng"
+        private const val KEY_LAST_LOCATION_TIME = "last_location_time"
     }
 }
