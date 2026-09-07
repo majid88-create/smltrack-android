@@ -44,7 +44,4 @@ interface TraceLogDao {
      */
     @Query("SELECT * FROM trace_logs ORDER BY id DESC LIMIT 1")
     suspend fun getLatest(): TraceLogEntity?
-
-    @Query("SELECT * FROM trace_logs WHERE projectId = :projectId ORDER BY timestamp DESC LIMIT 1")
-    suspend fun getLatestForProject(projectId: String): TraceLogEntity?
 }

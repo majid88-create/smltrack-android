@@ -66,7 +66,6 @@ function doGet(e) {
     }
 
     if (action === 'geofence') return handleGetGeofence();
-    if (action === 'last_visits') return handleGetLastVisits(e.parameter.username || '');
     if (action === 'ping')     return jsonOut({ status: 'ok', message: 'pong', time: nowIso() });
 
     return jsonOut({ status: 'error', message: 'Unknown action: ' + action });
@@ -128,35 +127,6 @@ function handleGetGeofence() {
     });
   }
   return jsonOut({ status: 'ok', data: out });
-}
-
-// ==================== KUNJUNGAN TERAKHIR PER SITE ====================
-// Membaca trace_log dan mengambil titik terbaru untuk setiap project milik user.
-// App memakai ini untuk menampilkan "Last visit" pada daftar Lokasi Site.
-function handleGetLastVisits(username) {
-  if (!username) return jsonOut({ status: 'ok', data: [] });
-
-  var sheet = ss().getSheetByName(TAB_TRACE);
-  var data = sheet.getDataRange().getValues();
-  var latest = {};
-
-  for (var i = 1; i < data.length; i++) {
-    var rowUser = String(data[i][1] || '');
-    var projectId = String(data[i][8] || '');
-    var projectName = String(data[i][9] || '');
-    var timestamp = String(data[i][7] || '');
-    if (rowUser !== String(username) || !projectId || !timestamp) continue;
-
-    if (!latest[projectId] || new Date(timestamp).getTime() > new Date(latest[projectId].timestamp).getTime()) {
-      latest[projectId] = {
-        projectId: projectId,
-        projectName: projectName,
-        timestamp: timestamp
-      };
-    }
-  }
-
-  return jsonOut({ status: 'ok', data: Object.keys(latest).map(function (id) { return latest[id]; }) });
 }
 
 // ==================== AMBIL GEOFENCE DARI SERVER SML ASLI ====================

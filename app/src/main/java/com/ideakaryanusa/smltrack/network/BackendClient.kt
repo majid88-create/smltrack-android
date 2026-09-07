@@ -5,7 +5,6 @@ import com.ideakaryanusa.smltrack.model.BackendResponse
 import com.ideakaryanusa.smltrack.model.BackendTraceBatchRequest
 import com.ideakaryanusa.smltrack.model.BackendTraceRequest
 import com.ideakaryanusa.smltrack.model.GeofenceResponse
-import com.ideakaryanusa.smltrack.model.LastVisitsResponse
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
@@ -38,13 +37,6 @@ interface BackendApiService {
         @Query("action") action: String = "geofence",
         @Query("secret") secret: String
     ): Response<GeofenceResponse>
-
-    @GET("exec")
-    suspend fun getLastVisits(
-        @Query("action") action: String = "last_visits",
-        @Query("secret") secret: String,
-        @Query("username") username: String
-    ): Response<LastVisitsResponse>
 }
 
 object BackendClient {
