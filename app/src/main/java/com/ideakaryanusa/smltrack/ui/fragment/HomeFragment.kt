@@ -110,9 +110,17 @@ class HomeFragment : Fragment() {
 
                 // Lokasi terakhir + maps
                 if (data.lastLat != null && data.lastLng != null) {
-                    binding.tvLocation.text = "📍 ${data.lastArea ?: "Lokasi"}: ${data.lastLat}, ${data.lastLng}" +
+                    val insideArea = !data.lastArea.isNullOrBlank()
+                    binding.tvLocation.text = "📍 ${data.lastArea ?: "Di luar area"}: ${data.lastLat}, ${data.lastLng}" +
                         (data.lastTime?.let { " (jam $it)" } ?: "")
-                    showMap(data.lastLat, data.lastLng)
+                    showMap(data.lastLat, data.lastLng, insideArea)
+
+                    // Chip online: berdenyut hijau kalau di dalam proyek
+                    if (insideArea) {
+                        binding.tvOnline.text = "● Di Lokasi Proyek"
+                    } else {
+                        binding.tvOnline.text = "● Online"
+                    }
                 }
 
                 // Aktivitas hari ini (site dikunjungi)
@@ -145,27 +153,53 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /** Peta interaktif Leaflet + OpenStreetMap di WebView - gratis, tanpa API key. */
+    /** Peta interaktif Leaflet + Carto (gratis, tanpa API key, tidak memblokir WebView). */
     @SuppressLint("SetJavaScriptEnabled")
-    private fun showMap(lat: Double, lng: Double) {
+    private fun showMap(lat: Double, lng: Double, insideArea: Boolean) {
         binding.tvMapPlaceholder.visibility = View.GONE
         val web = binding.mapWebView
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
+
+        // Marker: hijau berdenyut kalau di dalam area proyek, hijau biasa kalau di luar
+        val pulseCss = if (insideArea) """
+            .marker {
+              width:22px;height:22px;border-radius:50%;background:#16A34A;
+              border:3px solid #fff;box-shadow:0 0 0 rgba(22,163,74,0.6);
+              animation:pulse 1.5s infinite;
+            }
+            @keyframes pulse {
+              0%{box-shadow:0 0 0 0 rgba(22,163,74,0.7);}
+              70%{box-shadow:0 0 0 18px rgba(22,163,74,0);}
+              100%{box-shadow:0 0 0 0 rgba(22,163,74,0);}
+            }
+        """ else """
+            .marker {
+              width:20px;height:20px;border-radius:50%;background:#16A34A;
+              border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);
+            }
+        """
+
         val html = """
             <!DOCTYPE html><html><head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
             <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-            <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
+            <style>
+              html,body,#map{height:100%;margin:0;padding:0;background:#e8eef3;}
+              $pulseCss
+            </style>
             </head><body><div id="map"></div>
             <script>
               var map = L.map('map', {zoomControl:false, attributionControl:false}).setView([$lat,$lng], 16);
-              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-              L.marker([$lat,$lng]).addTo(map);
+              L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                subdomains:'abcd', maxZoom:19
+              }).addTo(map);
+              var icon = L.divIcon({className:'', html:'<div class="marker"></div>', iconSize:[22,22], iconAnchor:[11,11]});
+              L.marker([$lat,$lng], {icon:icon}).addTo(map);
             </script></body></html>
         """.trimIndent()
-        web.loadDataWithBaseURL("https://www.openstreetmap.org", html, "text/html", "UTF-8", null)
+        web.loadDataWithBaseURL("https://carto.com", html, "text/html", "UTF-8", null)
     }
 
     private fun requestAndStart() {

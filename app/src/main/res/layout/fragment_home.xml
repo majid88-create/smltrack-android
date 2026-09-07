@@ -231,7 +231,7 @@
                 android:id="@+id/tvSitesEmpty"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Belum ada site dikunjungi"
+                android:text="Belum ada site yang Anda tangani (CP)"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
                 android:visibility="gone" />
